@@ -24,6 +24,7 @@ import math
 
 palette = pyplot.get_cmap('Set3')
 
+
 def set_seed(seed):
     """for reproducibility
     :param seed:
@@ -41,6 +42,7 @@ def set_seed(seed):
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
 
+
 def das_dennis_recursion(ref_dirs, ref_dir, n_partitions, beta, depth):
     if depth == len(ref_dir) - 1:
         ref_dir[depth] = beta / (1.0 * n_partitions)
@@ -50,6 +52,7 @@ def das_dennis_recursion(ref_dirs, ref_dir, n_partitions, beta, depth):
             ref_dir[depth] = 1.0 * i / (1.0 * n_partitions)
             das_dennis_recursion(ref_dirs, np.copy(ref_dir), n_partitions, beta - i, depth + 1)
 
+
 def das_dennis(n_partitions, n_dim):
     if n_partitions == 0:
         return np.full((1, n_dim), 1 / n_dim)
@@ -58,18 +61,22 @@ def das_dennis(n_partitions, n_dim):
         ref_dir = np.full(n_dim, np.nan)
         das_dennis_recursion(ref_dirs, ref_dir, n_partitions, n_partitions, 0)
         return np.concatenate(ref_dirs, axis=0)
-def select_MinPts(data,k):
+
+
+def select_MinPts(data, k):
     k_dist = []
     for i in range(data.shape[0]):
-        dist = (((data[i] - data)**2).sum(axis=1)**0.5)
+        dist = (((data[i] - data) ** 2).sum(axis=1) ** 0.5)
         dist.sort()
         k_dist.append(dist[k])
     return np.array(k_dist)
+
 
 class DatasetFromNumPy(Dataset):
     def __init__(self, data, label):
         self.data = data
         self.label = label
+
     def __len__(self):
         return len(self.data)  # 返回长度
 
@@ -90,25 +97,26 @@ if __name__ == '__main__':
     parser.add_argument('--n_gen', '-n', default=200, type=int, help="The genertion of EAs.")
     parser.add_argument('--lr', '-l', default=1e-4, help="learning rate")
     parser.add_argument('--seed', '-s', default=2023, type=int, help="Seed")
-    parser.add_argument('--problem_name', '-pn', default='dtlz2', type=str, help='Test problems.')
+    parser.add_argument('--problem_name', '-pn', default='convex_dtlz4', type=str, help='Test problems.')
     parser.add_argument('--is_plot', default=False, help='Plot.?')
     parser.add_argument('--archive', default=0, type=int, help='whether archive')
     parser.add_argument('--mode', default=0, type=int, help='whether archive')
-    parser.add_argument('--test', default=0, type=int, help='test mode, 0:fix 1:focus on 1st...',)
+    parser.add_argument('--test', default=0, type=int, help='test mode, 0:fix 1:focus on 1st...', )
     args = parser.parse_args()
     set_seed(args.seed)
     device = 'cuda'
     # args.lr = 1e-3
-    if args.problem_name in ['zdt1', 'zdt2', 'zdt3', 'dtlz4','convex_dtlz4']:
+    if args.problem_name in ['zdt1', 'zdt2', 'zdt3', 'dtlz4', 'convex_dtlz4']:
         args.lr = 1e-3
     else:
         args.lr = 1e-4
     print('args:', args)
     # {0: nothing, 1: Using better training solution instead suggested solution,
     # 2: 1+ delete strange solutions and compare suggested solution with strange solutions}
-    ref_point = {'zdt1': [1.1, 1.1], 'zdt2': [1.1, 1.1], 'zdt3': [1, 1], 'dtlz1': [0.55, 0.55, 0.55], 'dtlz3':[1.1, 1.1, 1.1],
+    ref_point = {'zdt1': [1.1, 1.1], 'zdt2': [1.1, 1.1], 'zdt3': [1, 1], 'dtlz1': [0.55, 0.55, 0.55],
+                 'dtlz3': [1.1, 1.1, 1.1],
                  'dtlz2': [1.1, 1.1, 1.1], 'dtlz4': [1.1, 1.1, 1.1], 'dtlz5': [1.1, 1.1, 1.1], 'dtlz7': [1.1, 1.1, 6.6],
-                 'convex_dtlz2':[1.1, 1.1,1.1], 'convex_dtlz4':[1.1, 1.1,1.1] }
+                 'convex_dtlz2': [1.1, 1.1, 1.1], 'convex_dtlz4': [1.1, 1.1, 1.1]}
     ref = ref_point[args.problem_name]
     mode = args.mode
     epochs = 500
@@ -116,7 +124,7 @@ if __name__ == '__main__':
     n_run = 3
     bs = 1
     pop_size = args.pop_size
-    result = {'HV_list': [], 'meta_hv': [], 'igd_list': [], 'meta_igd_list': [], 'Cos': [], 'meta_cos': []}
+    result = {'HV_list': [], 'meta_hv': [], 'UseSNum': [], 'igd_list': [], 'meta_igd_list': [], 'Cos': [], 'meta_cos': []}
     problem = get_problem(args.problem_name, n_var=args.n_var)
     n_obj = problem.n_obj
     hv = HV(ref_point=ref)
@@ -159,7 +167,7 @@ if __name__ == '__main__':
         z_max = OV.max(0)
 
         true_label = torch.tensor(DV).cuda()
-        Norm_Objectives = (OV - z_min) / (z_max-z_min)
+        Norm_Objectives = (OV - z_min) / (z_max - z_min)
         pref = Norm_Objectives / Norm_Objectives.sum(1).reshape(-1, 1)
         pref = torch.tensor(pref).to(device).float()
         IM_model = ParetoSetModel(problem.n_var, problem.n_obj, problem)
@@ -173,7 +181,7 @@ if __name__ == '__main__':
             IM_model.train()
             for data in train_loader:
                 x = IM_model(data[0])
-                Loss =  ((x - data[1])**2).sum(1).mean()
+                Loss = ((x - data[1]) ** 2).sum(1).mean()
                 optimizer.zero_grad()
                 Loss.backward()
                 optimizer.step()
@@ -185,37 +193,39 @@ if __name__ == '__main__':
                 # pref = pref / np.linalg.norm(pref, axis=1).reshape(len(pref), 1)
                 pref = torch.tensor(pref).to(device).float()
                 # local search
-                ls_pref = np.stack([np.linspace(0, 1, 66*10), 1 - np.linspace(0, 1, 66*10)]).T
+                ls_pref = np.stack([np.linspace(0, 1, 66 * 10), 1 - np.linspace(0, 1, 66 * 10)]).T
                 ls_pref = torch.tensor(ls_pref).to(device).float()
             if n_obj == 3:
-                if args.test==0:
-                    pref = torch.tensor(das_dennis(60, 3)).to(device).float()
+                if args.test == 0:
+                    pref = torch.tensor(das_dennis(9, 3)).to(device).float()
                     # local search
-                    ls_pref = torch.tensor(das_dennis(9*4, 3)).to(device).float()
-                elif args.test==1:
+                    ls_pref = torch.tensor(das_dennis(9 * 4, 3)).to(device).float()
+                elif args.test == 1:
                     pref = torch.tensor(np.random.dirichlet([5, 1, 1], 66)).to(device).float()
-                    ls_pref = torch.tensor(np.random.dirichlet([5, 1, 1], 66*10)).to(device).float()
-                elif args.test==2:
+                    ls_pref = torch.tensor(np.random.dirichlet([5, 1, 1], 66 * 10)).to(device).float()
+                elif args.test == 2:
                     pref = torch.tensor(np.random.dirichlet([1, 5, 1], 66)).to(device).float()
-                    ls_pref = torch.tensor(np.random.dirichlet([1, 5, 1], 66*10)).to(device).float()
+                    ls_pref = torch.tensor(np.random.dirichlet([1, 5, 1], 66 * 10)).to(device).float()
                 else:
                     pref = torch.tensor(np.random.dirichlet([1, 1, 5], 66)).to(device).float()
-                    ls_pref = torch.tensor(np.random.dirichlet([1, 1, 5], 66*10)).to(device).float()
+                    ls_pref = torch.tensor(np.random.dirichlet([1, 1, 5], 66 * 10)).to(device).float()
             global out
             out = {}
-            # if mode==1:
-            #     sol = IM_model(ls_pref)
-            # else:
-            sol = IM_model(pref)
+            if args.archive == 1:
+                sol = IM_model(ls_pref)
+            else:
+                sol = IM_model(pref)
             problem._evaluate(sol.detach().cpu().numpy(), out)
             generated_ps = sol.cpu().numpy()
             generated_pf = out['F']
-            rank, front = fast_non_dominated_sort(generated_pf)
-            generated_pf = generated_pf[front[0], :]
+            if args.archive == 1:
+                rank, front = fast_non_dominated_sort(generated_pf)
+                generated_pf = generated_pf[front[0], :]
             tem_pf = []
             avg_cos = []
             meta_cos = []
             avg_igd = []
+            ASNUM = 0
             meta_igd = []
             res_ea = []
             APF_V = (generated_pf - z_min) / (z_max - z_min)
@@ -229,7 +239,6 @@ if __name__ == '__main__':
                 sug_max_cos = np.max(angle)
                 sug_solution = generated_pf[index]
 
-
                 num = np.dot(pre, compared_solutions.T)
                 denom = np.linalg.norm(pre) * np.linalg.norm(compared_solutions, axis=1)
                 angle = num / denom
@@ -240,12 +249,17 @@ if __name__ == '__main__':
                 dominated_n = (sug_solution > training_solution).sum()
                 is_dominated = dominated_n == n_obj
                 res_ea.append(training_solution)
-                if is_dominated:
-                    tem_pf.append(training_solution.tolist())
-                elif np.sum(sug_solution<=training_solution) == n_obj:
-                    tem_pf.append(sug_solution.tolist())
-                elif (training_max_cos > sug_max_cos):
-                    tem_pf.append(training_solution.tolist())
+                if args.archive == 1 and args.mode == 1:
+                    if is_dominated:
+                        tem_pf.append(training_solution.tolist())
+                        ASNUM += 1
+                    elif np.sum(sug_solution <= training_solution) == n_obj:
+                        tem_pf.append(sug_solution.tolist())
+                    elif (training_max_cos > sug_max_cos):
+                        tem_pf.append(training_solution.tolist())
+                        ASNUM += 1
+                    else:
+                        tem_pf.append(sug_solution.tolist())
                 else:
                     tem_pf.append(sug_solution.tolist())
                 if mode > 0:
@@ -258,14 +272,14 @@ if __name__ == '__main__':
                 if np.isnan(Cos):
                     Cos = 0
                 avg_cos.append(Cos)
-                Sol_ea = (training_solution-z_min) / (z_max-z_min)
+                Sol_ea = (training_solution - z_min) / (z_max - z_min)
                 num = np.dot(Sol_ea, pre)
                 denom = np.linalg.norm(Sol_ea) * np.linalg.norm(pre)
                 Cos_ea = num / denom
                 if np.isnan(Cos_ea):
                     Cos_ea = 0
                 meta_cos.append(Cos_ea)
-            if mode > 0:
+            if args.archive == 1:
                 generated_pf = np.array(tem_pf)
             res_ea = np.array(res_ea)
 
@@ -280,24 +294,36 @@ if __name__ == '__main__':
                 pf = get_problem(args.problem_name).pareto_front(ref_dirs=ref_dirs)
             # else:
             #     pf = get_problem(args.problem_name).pareto_front()
+            cal_close_pf = []
+            z_min = pf.min(0)
+            z_max = pf.max(0)
+            norm_pf = (pf - z_min) / (z_max-z_min)
+            for p in pref.cpu().numpy():
+                num = np.dot(p, norm_pf.T)
+                denom = np.linalg.norm(p) * np.linalg.norm(norm_pf, axis=1)
+                angle = num / denom
+                angle[np.isneginf(angle)] = 0
+                index = np.argmax(angle)
+                cal_close_pf.append(pf[index].tolist())
 
-            ind = IGD(pf)
+            # ind = IGD(np.array(cal_close_pf))
 
             hv_value = hv(generated_pf)
 
-
             cp_of_im = math.degrees(math.acos(np.array(avg_cos).mean()))
             cp_of_meta = math.degrees(math.acos(np.array(meta_cos).mean()))
-            cp_hv = hv_value* (90-cp_of_im) / 90
-            cp_meta_hv = hv(res_ea) * (90-cp_of_meta) / 90
+            cp_hv = hv_value * (90-cp_of_im) / 90
+            cp_meta_hv = hv(res_ea)
+            # * (90-cp_of_meta) / 90
             print(f'cp:{cp_of_im}, meta_cp{cp_of_meta}')
-
+            result['UseSNum'].append((np.array(ASNUM) / args.pop_size).mean())
             result['Cos'].append(np.array(avg_cos).mean())
             result['meta_cos'].append(np.array(meta_cos).mean())
             result['HV_list'].append(cp_hv)
-            result['meta_hv'].append(cp_meta_hv)
-            result["igd_list"].append(ind(generated_pf) * (90-cp_of_im) / 90)
-            result["meta_igd_list"].append(ind(res_ea) * (90-cp_of_meta) / 90)
+            result['meta_hv'].append(cp_meta_hv * (90-cp_of_meta) / 90)
+            result["igd_list"].append(np.sqrt(((generated_pf-cal_close_pf)**2).sum(1)).mean())
+            result["meta_igd_list"].append(np.sqrt(((generated_pf-cal_close_pf)**2).sum(1)).mean())
+            # * (90-cp_of_meta) / 90)
 
             print(result)
             if args.is_plot:
@@ -305,14 +331,15 @@ if __name__ == '__main__':
                     fig = plt.figure()
 
                     for p in range(10):
-                        leg = f'Pref. :{round(0.1*p, 1)}~{round(0.1*(p+1), 1)}'
-                        pre_index = (0.1*p <= pref[:, 0]) & (pref[:, 0] <= 0.1*(p+1))
-                        if p ==1:
+                        leg = f'Pref. :{round(0.1 * p, 1)}~{round(0.1 * (p + 1), 1)}'
+                        pre_index = (0.1 * p <= pref[:, 0]) & (pref[:, 0] <= 0.1 * (p + 1))
+                        if p == 1:
                             color = '#d6ce93'
                         else:
                             color = palette(p)
-                        plt.scatter(generated_pf[pre_index.cpu().numpy(), 0], generated_pf[pre_index.cpu().numpy(), 1], c=color, alpha=1, lw=1, label=leg, zorder=2)
-                    # plt.scatter(res.F[:, 0], res.F[:, 1], c='black', alpha=1, lw=1, label='final solution', zorder=2)
+                        plt.scatter(generated_pf[pre_index.cpu().numpy(), 0], generated_pf[pre_index.cpu().numpy(), 1],
+                                    c=color, alpha=1, lw=1, label=leg, zorder=2)
+                    plt.scatter(res.F[:, 0], res.F[:, 1], c='black', alpha=1, lw=1, label='final solution', zorder=2)
                     plt.xlabel(r'$f_1(x)$', size=16)
                     plt.ylabel(r'$f_2(x)$', size=16)
                     plt.legend(loc='best', fontsize=10)
@@ -325,17 +352,19 @@ if __name__ == '__main__':
                     ax = fig.add_subplot(111, projection='3d')
                     fig = plt.figure()
                     ax.scatter(pf[:, 0], pf[:, 1], pf[:, 2], c='gray', alpha=0.1, lw=1, label='Pareto front')
-                    # ax.scatter(res.F[:, 0], res.F[:, 1],res.F[:, 2], c='w', alpha=0.5, lw=1, s=45, label='final solutions', edgecolors='black')
+                    ax.scatter(res.F[:, 0], res.F[:, 1], res.F[:, 2], c='w', alpha=0.5, lw=1, s=45,
+                               label='final solutions', edgecolors='black')
 
                     for p in range(5):
-                        leg = f'Pref. :{round(0.2*p, 1)}~{round(0.2*(p+1), 1)}'
-                        pre_index = (0.2*p <= pref[:, 0]) & (pref[:, 0] <= 0.2*(p+1))
-                        if p ==1:
+                        leg = f'Pref. :{round(0.2 * p, 1)}~{round(0.2 * (p + 1), 1)}'
+                        pre_index = (0.2 * p <= pref[:, 0]) & (pref[:, 0] <= 0.2 * (p + 1))
+                        if p == 1:
                             color = '#d6ce93'
                         else:
                             color = palette(p)
-                        ax.scatter(generated_pf[pre_index.cpu().numpy(), 0], generated_pf[pre_index.cpu().numpy(), 1], generated_pf[pre_index.cpu().numpy(), 2],
-                                    c=color, alpha=1, lw=1, label=leg, s=35)
+                        ax.scatter(generated_pf[pre_index.cpu().numpy(), 0], generated_pf[pre_index.cpu().numpy(), 1],
+                                   generated_pf[pre_index.cpu().numpy(), 2],
+                                   c=color, alpha=1, lw=1, label=leg, s=35)
                     # max_lim = np.max(generated_pf, axis=0)
                     # min_lim = np.min(generated_pf, axis=0)
                     #
